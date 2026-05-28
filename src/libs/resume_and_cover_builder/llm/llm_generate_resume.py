@@ -314,71 +314,280 @@ class LLMResumer:
         
         return output
 
+    def generate_all_sections(self) -> dict:
+        """
+        Generate all resume sections in a single LLM call for better coherence.
+        Returns:
+            dict: A dictionary with section names as keys and generated HTML as values.
+        """
+        logger.debug("Starting unified resume generation (single LLM call)")
+
+        # Build a combined prompt that generates all sections at once
+        combined_prompt = """你是一位专业的HR专家和简历撰写顾问，专精于ATS友好型简历。
+你的任务是在单次回复中生成一份完整、专业的简历，包含所有模块。
+
+请使用以下标记符返回各模块：
+[HEADER]...[/HEADER]
+[EDUCATION]...[/EDUCATION]
+[WORK_EXPERIENCE]...[/WORK_EXPERIENCE]
+[PROJECTS]...[/PROJECTS]
+[ACHIEVEMENTS]...[/ACHIEVEMENTS]
+[CERTIFICATIONS]...[/CERTIFICATIONS]
+[ADDITIONAL_SKILLS]...[/ADDITIONAL_SKILLS]
+
+重要规则：
+1. 每个模块必须用对应的开始标记和结束标记包裹，如[HEADER]...[/HEADER]
+2. 包含所有有数据的模块，无数据的模块省略
+3. 内容要专业、详细、有吸引力，避免简单罗列
+4. 善用量化和具体数据支撑描述（如：提升效率30%、管理团队20人）
+5. 语言专业流畅，展现应聘者的核心价值
+6. 所有模块标题使用中文
+
+模块模板：
+
+[HEADER]
+<header>
+  <h1>[姓名]</h1>
+  <div class="contact-info"> 
+    <p class="fas fa-map-marker-alt">
+      <span>[城市, 国家]</span>
+    </p> 
+    <p class="fas fa-phone">
+      <span>[电话]</span>
+    </p> 
+    <p class="fas fa-envelope">
+      <span>[邮箱]</span>
+    </p> 
+    <p class="fab fa-linkedin">
+      <a href="[LinkedIn链接]">LinkedIn</a>
+    </p> 
+    <p class="fab fa-github">
+      <a href="[GitHub链接]">GitHub</a>
+    </p> 
+  </div>
+</header>
+[/HEADER]
+
+[EDUCATION]
+<section id="education">
+    <h2>教育背景</h2>
+    <div class="entry">
+      <div class="entry-header">
+          <span class="entry-name">[大学名称]</span>
+          <span class="entry-location">[位置]</span>
+      </div>
+      <div class="entry-details">
+          <span class="entry-title">[学位] · [专业]</span>
+          <span class="entry-year">[入学年] – [毕业年]</span>
+      </div>
+      <div class="grade">GPA: [你的GPA] | [其他重要成绩]</div>
+      <ul class="compact-list">
+          <li>核心课程：[课程名称]（成绩：[成绩]）</li>
+          <li>核心课程：[课程名称]（成绩：[成绩]）</li>
+          <li>核心课程：[课程名称]（成绩：[成绩]）</li>
+      </ul>
+    </div>
+</section>
+[/EDUCATION]
+
+[WORK_EXPERIENCE]
+<section id="work-experience">
+    <h2>工作经验</h2>
+    <div class="entry">
+      <div class="entry-header">
+          <span class="entry-name">[公司名称]</span>
+          <span class="entry-location">[城市]</span>
+      </div>
+      <div class="entry-details">
+          <span class="entry-title">[职位名称]</span>
+          <span class="entry-year">[开始日期] – [结束日期]</span>
+      </div>
+      <ul class="compact-list">
+          <li>[详细描述职责1，突出量化成果：如"主导XX系统开发，日均处理请求XX次，提升响应速度40%"</li>
+          <li>[详细描述职责2，强调技术深度和团队协作：如"优化数据库查询性能，将慢查询减少60%"</li>
+          <li>[详细描述职责3，展示职业成长：如"指导3名 junior 工程师，推动团队效率提升25%"</li>
+      </ul>
+    </div>
+</section>
+[/WORK_EXPERIENCE]
+
+[PROJECTS]
+<section id="side-projects">
+    <h2>项目经验</h2>
+    <div class="entry">
+      <div class="entry-header">
+          <span class="entry-name"><i class="fab fa-github"></i> <a href="[项目链接]">[项目名称]</a></span>
+          <span class="entry-tech">[技术栈1 / 技术栈2 / 技术栈3]</span>
+      </div>
+      <ul class="compact-list">
+          <li>[项目描述：简述项目背景、目标和你解决的核心问题]</li>
+          <li>[技术贡献：详细说明你使用的技术方案、遇到的挑战及解决方案]</li>
+          <li>[项目成果：量化成果，如"GitHub 500+ stars"、"日活用户10万+"</li>
+      </ul>
+    </div>
+</section>
+[/PROJECTS]
+
+[ACHIEVEMENTS]
+<section id="achievements">
+    <h2>成就荣誉</h2>
+    <ul class="compact-list">
+      <li><strong>[奖项/荣誉名称]：</strong>[详细描述获奖原因、评选标准及排名情况，突出竞争性和含金量]</li>
+      <li><strong>[竞赛/ Hackathon 名称]：</strong>[描述参与经历、担任角色、最终成绩或创新点]</li>
+    </ul>
+</section>
+[/ACHIEVEMENTS]
+
+[CERTIFICATIONS]
+<section id="certifications">
+    <h2>证书资质</h2>
+    <ul class="compact-list">
+      <li><strong>[证书名称]：</strong>[颁发机构] | [获得日期] | [证书编号或验证方式]</li>
+      <li><strong>[专业认证]：</strong>[颁发机构] | [获得日期] | [简述该认证的专业价值]</li>
+    </ul>
+</section>
+[/CERTIFICATIONS]
+
+[ADDITIONAL_SKILLS]
+<section id="skills-languages">
+    <h2>其他技能</h2>
+    <div class="two-column">
+      <div class="skills-column">
+          <h3>技术技能</h3>
+          <ul class="compact-list">
+              <li><strong>编程语言：</strong>[具体掌握的语言及熟练程度]</li>
+              <li><strong>框架/工具：</strong>[实际使用的框架和工具]</li>
+              <li><strong>其他：</strong>[其他相关技能]</li>
+          </ul>
+      </div>
+      <div class="languages-column">
+          <h3>语言能力</h3>
+          <ul class="compact-list">
+              <li><strong>[语言名称]：</strong>[读写听说是哪一级，如"CET-6"或"流利"</li>
+          </ul>
+      </div>
+    </div>
+</section>
+[/ADDITIONAL_SKILLS]
+
+请基于以下数据生成简历：
+
+【个人信息】
+{personal_information}
+
+【教育背景】
+{education_details}
+
+【工作经验】
+{experience_details}
+
+【项目经历】
+{projects}
+
+【成就荣誉】
+{achievements}
+
+【证书资质】
+{certifications}
+
+【其他信息】
+语言能力: {languages}
+兴趣爱好: {interests}
+技能特长: {skills}
+
+请确保：
+1. 每个模块内容详实、专业，避免简单罗列
+2. 善用量化和具体数据支撑描述
+3. 突出与目标岗位最相关的经验和技能
+4. 使用专业HR认可的语言和表达方式
+
+仅返回标记的模块内容，每个模块都要正确闭合。"""
+
+        # Prepare input data
+        skills = set()
+        if self.resume.experience_details:
+            for exp in self.resume.experience_details:
+                if exp.skills_acquired:
+                    skills.update(exp.skills_acquired)
+        if self.resume.education_details:
+            for edu in self.resume.education_details:
+                if edu.exam:
+                    for exam in edu.exam:
+                        skills.update(exam.keys())
+
+        input_data = {
+            "personal_information": self.resume.personal_information,
+            "education_details": self.resume.education_details or "N/A",
+            "experience_details": self.resume.experience_details or "N/A",
+            "projects": self.resume.projects or "N/A",
+            "achievements": self.resume.achievements or "N/A",
+            "certifications": self.resume.certifications or "N/A",
+            "languages": self.resume.languages or "N/A",
+            "interests": self.resume.interests or "N/A",
+            "skills": skills or "N/A",
+        }
+
+        prompt = ChatPromptTemplate.from_template(combined_prompt)
+        chain = prompt | self.llm_cheap | ContentBlockParser()
+        
+        logger.debug("Invoking unified LLM chain for all sections")
+        output = chain.invoke(input_data)
+        logger.debug(f"Unified output length: {len(output)}")
+
+        # Parse the output into individual sections
+        sections = self._parse_unified_output(output)
+        logger.debug(f"Parsed sections: {list(sections.keys())}")
+
+        return sections
+
+    def _parse_unified_output(self, output: str) -> dict:
+        """
+        Parse the unified LLM output into individual sections.
+        
+        Args:
+            output: The raw output string containing marked sections.
+            
+        Returns:
+            dict: A dictionary mapping section names to their HTML content.
+        """
+        import re
+        sections = {}
+        
+        # Define section markers with start and end patterns
+        section_markers = [
+            (r'\[HEADER\]', r'\[/HEADER\]', 'header'),
+            (r'\[EDUCATION\]', r'\[/EDUCATION\]', 'education'),
+            (r'\[WORK_EXPERIENCE\]', r'\[/WORK_EXPERIENCE\]', 'work_experience'),
+            (r'\[PROJECTS\]', r'\[/PROJECTS\]', 'projects'),
+            (r'\[ACHIEVEMENTS\]', r'\[/ACHIEVEMENTS\]', 'achievements'),
+            (r'\[CERTIFICATIONS\]', r'\[/CERTIFICATIONS\]', 'certifications'),
+            (r'\[ADDITIONAL_SKILLS\]', r'\[/ADDITIONAL_SKILLS\]', 'additional_skills'),
+        ]
+        
+        for start_marker, end_marker, key in section_markers:
+            # Find content between start and end markers
+            pattern = rf'{start_marker}(.*?){end_marker}'
+            match = re.search(pattern, output, re.DOTALL | re.IGNORECASE)
+            if match:
+                content = match.group(1).strip()
+                if content:
+                    sections[key] = content
+        
+        return sections
+
     def generate_html_resume(self) -> str:
         """
         Generate the full HTML resume based on the resume object.
+        Uses a single LLM call to generate all sections for better coherence.
         Returns:
             str: The generated HTML resume.
         """
-        def header_fn():
-            if self.resume.personal_information:
-                return self.generate_header()
-            return ""
-
-        def education_fn():
-            if self.resume.education_details:
-                return self.generate_education_section()
-            return ""
-
-        def work_experience_fn():
-            if self.resume.experience_details:
-                return self.generate_work_experience_section()
-            return ""
-
-        def projects_fn():
-            if self.resume.projects:
-                return self.generate_projects_section()
-            return ""
-
-        def achievements_fn():
-            if self.resume.achievements:
-                return self.generate_achievements_section()
-            return ""
+        logger.debug("Starting unified resume generation (single LLM call)")
         
-        def certifications_fn():
-            if self.resume.certifications:
-                return self.generate_certifications_section()
-            return ""
-
-        def additional_skills_fn():
-            if (self.resume.experience_details or self.resume.education_details or
-                self.resume.languages or self.resume.interests):
-                return self.generate_additional_skills_section()
-            return ""
-
-        # Create a dictionary to map the function names to their respective callables
-        functions = {
-            "header": header_fn,
-            "education": education_fn,
-            "work_experience": work_experience_fn,
-            "projects": projects_fn,
-            "achievements": achievements_fn,
-            "certifications": certifications_fn,
-            "additional_skills": additional_skills_fn,
-        }
-
-        # Use ThreadPoolExecutor to run the functions in parallel
-        with ThreadPoolExecutor() as executor:
-            future_to_section = {executor.submit(fn): section for section, fn in functions.items()}
-            results = {}
-            for future in as_completed(future_to_section):
-                section = future_to_section[future]
-                try:
-                    result = future.result()
-                    if result:
-                        results[section] = result
-                except Exception as exc:
-                    logger.error(f'{section} raised an exception: {exc}')
+        # Generate all sections in a single LLM call
+        results = self.generate_all_sections()
+        
+        # Assemble the HTML resume
         full_resume = "<body>\n"
         full_resume += f"  {results.get('header', '')}\n"
         full_resume += "  <main>\n"
@@ -390,4 +599,6 @@ class LLMResumer:
         full_resume += f"    {results.get('additional_skills', '')}\n"
         full_resume += "  </main>\n"
         full_resume += "</body>"
+        
+        logger.debug("Unified resume generation completed")
         return full_resume
