@@ -162,3 +162,7 @@ venv.bak/
 mono_crash.*
 
 job_applications/
+
+# External libraries (not part of this project)
+lib_resume_builder_AIHawk-main/
+reference/
