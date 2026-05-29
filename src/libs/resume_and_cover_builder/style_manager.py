@@ -33,7 +33,8 @@ class StyleManager:
             logging.debug(f"Files found: {[f.name for f in files]}")
             for file_path in files:
                 logging.debug(f"Processing file: {file_path}")
-                with file_path.open("r", encoding="utf-8") as file:
+                # Use UTF-8 encoding explicitly with error handling for Windows compatibility
+                with file_path.open("r", encoding="utf-8", errors="replace") as file:
                     first_line = file.readline().strip()
                     logging.debug(f"First line of file {file_path.name}: {first_line}")
                     if first_line.startswith("/*") and first_line.endswith("*/"):

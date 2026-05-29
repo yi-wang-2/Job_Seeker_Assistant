@@ -26,7 +26,7 @@ class ResumeGenerator:
         template = Template(global_config.html_template)
         
         try:
-            with open(style_path, "r") as f:
+            with open(style_path, "r", encoding="utf-8") as f:
                 style_css = f.read()  # Correzione: chiama il metodo `read` con le parentesi
         except FileNotFoundError:
             raise ValueError(f"Il file di stile non è stato trovato nel percorso: {style_path}")
@@ -61,9 +61,9 @@ class ResumeGenerator:
         gpt_answerer.set_job_description_from_text(job_description_text)
         cover_letter_html = gpt_answerer.generate_cover_letter()
         template = Template(global_config.html_template)
-        with open(style_path, "r") as f:
+        with open(style_path, "r", encoding="utf-8") as f:
             style_css = f.read()
-        # 获取简历语言用于HTML lang属性
+        # 获取简历语言用于 HTML lang 属性
         lang_code = global_config.RESUME_LANGUAGE if global_config.RESUME_LANGUAGE else "zh"
         lang_attr = "zh" if lang_code in ["zh", "zh-cn"] else ("en" if lang_code == "en" else "zh")
         return template.substitute(body=cover_letter_html, style_css=style_css, lang=lang_attr)
